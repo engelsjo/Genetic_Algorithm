@@ -88,7 +88,7 @@ class GeneticAlgorithm(object):
         if self.numberOfGenerations == self.totalGens:
             return True
         self.numberOfGenerations += 1
-        print(self.numberOfGenerations)
+        #print(self.numberOfGenerations)
         return False
 
     def evolveUntilTermination(self):
@@ -98,8 +98,9 @@ class GeneticAlgorithm(object):
             breeders = self.populationSelection(chromosomesWithEvals)
             parents, children = self.populationVariation(breeders)
             self.populationUpdate(parents, children)
-        self.printPopulationInputs()
-        self.printPopulationInputAverages()
+            self.printPopulationInputAverages()
+        #self.printPopulationInputs()
+        #self.printPopulationInputAverages()
 
     ############# Helper methods ##################
 
@@ -110,20 +111,24 @@ class GeneticAlgorithm(object):
             print(functionInputs)
 
     def printPopulationInputAverages(self):
-        print("\n\nInput Averages: \n")
+        print("\n\nInput Min/Averages: \n")
         minimum = None
         minInputs = None
+        evalSum = 0
         for chromosome in self.currentPopulation:
             functionInputs = self.getInputsFromBitStr(chromosome)
             chromosomeEval = self.evalFunction(functionInputs)
+            evalSum += chromosomeEval
             if minimum == None: 
                 minimum = chromosomeEval
                 minInputs = functionInputs
             if chromosomeEval < minimum: 
                 minimum = chromosomeEval
                 minInputs = functionInputs
+
         print("X: {} Y: {}".format(minInputs[0], minInputs[1]))
         print("Min: {}".format(minimum))
+        print("Average: {}".format(float(evalSum) / float(len(self.currentPopulation))))
 
     def tourneySelect(self, chromosomesWithEvals):
         selectionIndices = []
