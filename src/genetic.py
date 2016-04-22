@@ -42,12 +42,16 @@ class GeneticAlgorithm(object):
             evaluation = self.evalFunction(inputValues)
             chromosomesWithEvals.append((chromosome, evaluation)) # append a tuple
         # sort our chromosomes by evaluation to speed up performance of tourney selection
-        return sorted(chromosomesWithEvals, key=lambda x : x[1])[::-1] # reverse because we are using min values
+        chromosomesWithEvals = sorted(chromosomesWithEvals, key=lambda x : x[1])
+        return chromosomesWithEvals
 
     def populationSelection(self, chromosomesWithEvals):
+        rouletteTable = self.buildRouletteWheel(chromosomesWithEvals)
+        rouletteProbLine, scalingFactor = self.buildRouletteProbLineFromTable(rouletteTable)
+
         selectedParents = []
         while len(selectedParents) < len(self.currentPopulation):
-            parentSelection = self.tourneySelect(chromosomesWithEvals)
+            parentSelection = self.rouletteSelection(rouletteProbLine, scalingFactor)
             selectedParents.append(parentSelection)
         return selectedParents
             
@@ -55,8 +59,8 @@ class GeneticAlgorithm(object):
         numberOfVariations = len(breeders) / 2
         children = []
         for i in range(numberOfVariations):
-            parent1 = breeders[i][0]
-            parent2 = breeders[i + 1][0]
+            parent1 = breeders[i]
+            parent2 = breeders[i + 1]
             child1, child2 = self.crossover(parent1, parent2)
             randomNumber = randint(1, 1000)
             if randomNumber == 1: # mutate only 1/1000
@@ -70,15 +74,14 @@ class GeneticAlgorithm(object):
         # I am taking the elitist approach by keep the top 10 percent of parents and replacing the rest of the
         # population with randomly selected children
         survivors = []
-        breeders = sorted(breeders, key=lambda x: x[1])[::-1]
+        breeders = sorted(breeders, key=lambda x: x[1])
         numberOfParentSurvivors = int(.1 * len(self.currentPopulation))
         for i in range(numberOfParentSurvivors):
-            survivors.append(breeders[i][0])
+            survivors.append(breeders[i])
         numberOfChildrenSurvivors = len(self.currentPopulation) - numberOfParentSurvivors
         for j in range(numberOfChildrenSurvivors):
             survivors.append(children[j])
         self.currentPopulation = survivors
-        #self.printPopulationInputs()
 
     def termination(self):
         if self.numberOfGenerations == 50:
@@ -99,36 +102,78 @@ class GeneticAlgorithm(object):
 
     ############# Helper methods ##################
 
-    def printPopulationInputs(self):
+    def printPopulationInputs(self, chromosomes = None):
         print("\n\nPopulation Inputs\n\n")
         for chromosome in self.currentPopulation:
             functionInputs = self.getInputsFromBitStr(chromosome)
             print(functionInputs)
 
     def printPopulationInputAverages(self):
-        print("\n\nInput Averages: \n\n")
-        x = 0
-        y = 0
+        print("\n\nInput Averages: \n")
+        minimum = None
+        minInputs = None
         for chromosome in self.currentPopulation:
             functionInputs = self.getInputsFromBitStr(chromosome)
-            x += functionInputs[0]
-            y += functionInputs[1]
-        print("X: {} Y: {}".format(float(x) / float(len(self.currentPopulation)), float(y) / float(len(self.currentPopulation))))
-        print("Min: {}".format(self.evalFunction([x, y])))
+            chromosomeEval = self.evalFunction(functionInputs)
+            if minimum == None: 
+                minimum = chromosomeEval
+                minInputs = functionInputs
+            if chromosomeEval < minimum: 
+                minimum = chromosomeEval
+                minInputs = functionInputs
+        print("X: {} Y: {}".format(minInputs[0], minInputs[1]))
+        print("Min: {}".format(minimum))
 
     def tourneySelect(self, chromosomesWithEvals):
         selectionIndices = []
         for i in range(self.tourneyKval):
             selectionIndices.append(randint(0, len(chromosomesWithEvals) - 1))
-        selectionIndices = sorted(selectionIndices)[::-1]
+        selectionIndices = sorted(selectionIndices)
         # randomly select 'k' individuals from the parent population
         tourneyParticipants = []
         for k in range(len(selectionIndices)):
             tourneyParticipants.append(chromosomesWithEvals[selectionIndices[k]])
         # choose the best out of our tourney - we can improve this later rev by allowing 2nd best with prob p *(1-p)^2 and 3rd best p * (1-p)^3 etc
-        # since chromosomes and particpants are reverse sorted, the min is just the 0th index element
+        # since chromosomes and particpants are sorted, the min is just the 0th index element
         tourneyWinner = tourneyParticipants[0]
         return tourneyWinner 
+
+    def buildRouletteWheel(self, chromosomesWithEvals):
+        minValue = chromosomesWithEvals[-1][1] + .1
+        sumOfAllFitnessVals = 0
+        # first we invert each fitness value by multiplying by negative 1 - since we want small to count more
+        for i, chromosomeWithEval in enumerate(chromosomesWithEvals):
+            chromosomesWithEvals[i] = (chromosomeWithEval[0], chromosomeWithEval[1] * -1 + minValue)
+            sumOfAllFitnessVals += chromosomesWithEvals[i][1]
+        table = [] # list of tuples with 0th index the bits, and the 1st index the survival percent
+        for chromosomeWithEval in chromosomesWithEvals:
+            table.append((chromosomeWithEval[0], float(chromosomeWithEval[1]) / float(sumOfAllFitnessVals)))
+        return table
+
+    def buildRouletteProbLineFromTable(self, table):
+        currentTally = 0
+        # first scale our current tallies to be at least 1
+        smallestVal = table[-1][1]
+        smallestValLessThanOne = smallestVal < 1
+        factorsOfTen = 0
+        while smallestValLessThanOne:
+            for i, chromosomeWithSurvival in enumerate(table):
+                table[i] = (chromosomeWithSurvival[0], chromosomeWithSurvival[1] * 10)
+            factorsOfTen += 1
+            smallestValLessThanOne = table[-1][1] < 1
+        # now build the timeline of ranges
+        for i, chromosomeWithSurvival in enumerate(table):
+            table[i] = (chromosomeWithSurvival[0], currentTally + chromosomeWithSurvival[1])
+            currentTally += chromosomeWithSurvival[1]
+        # make sure last value is the max timeline value (rounding may have thrown this off)
+        table[-1] = (table[-1][0], 10**factorsOfTen)
+        return table, factorsOfTen  
+
+    def rouletteSelection(self, rouletteLine, factorsOfTen):
+        randomNumber = randint(1, 10**factorsOfTen)
+        for chromosome in rouletteLine:
+            if randomNumber > chromosome[1]: continue
+            else: return chromosome[0]  
 
     def crossover(self, parent1, parent2):
         randomPoint = randint(0, len(parent1)-1)
