@@ -3,7 +3,7 @@ import sys
 from random import randint
 
 class GeneticAlgorithm(object):
-    def __init__(self, initialPopulationSize=100, numChromosomeBits=16, minRange=-100, maxRange=100, evalFunction=None, evalInputs=0):
+    def __init__(self, initialPopulationSize=100, numChromosomeBits=16, minRange=-100, maxRange=100, evalFunction=None, evalInputs=0, generations=1):
         self.initPopulationSize = initialPopulationSize
         self.nbrOfChromosomeBits = numChromosomeBits
         self.minRange = minRange
@@ -15,6 +15,7 @@ class GeneticAlgorithm(object):
         self.shift = self.getShiftValue()
         self.scalar = self.getScalar()
         self.numberOfGenerations = 0
+        self.totalGens = generations
         self.tourneyKval = 2 # using binary tourney selection for now - we can play with this knob later
 
     ############# Evolutionary Process Methods #############
@@ -84,7 +85,7 @@ class GeneticAlgorithm(object):
         self.currentPopulation = survivors
 
     def termination(self):
-        if self.numberOfGenerations == 50:
+        if self.numberOfGenerations == self.totalGens:
             return True
         self.numberOfGenerations += 1
         print(self.numberOfGenerations)
@@ -255,22 +256,23 @@ def rosenbrockFunction(inputValues):
     return (1-x)**2 + 100*(y-x**2)**2
 
 def main(argv):
-    if len(argv) == 7:
+    if len(argv) == 8:
         initPopulationSize = int(argv[1])
         numberOfChromosomeBits = int(argv[2])
         rangeMin = int(argv[3])
         rangeMax = int(argv[4])
         numberOfInputs = int(argv[5])
         functionOfChoice = argv[6]
+        generations = int(argv[7])
         if numberOfChromosomeBits % numberOfInputs != 0:
             print("You need to be able to evenly divide the number of chromosome bits, and the number of evaluation function inputs values")
             sys.exit(-1)
 
         # set up our genetic algorithm with the function we wish.
         if functionOfChoice == "gold":
-            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, goldSteinPriceFunction, numberOfInputs)
+            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, goldSteinPriceFunction, numberOfInputs, generations)
         elif functionOfChoice == "rose":
-            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, rosenbrockFunction, numberOfInputs)
+            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, rosenbrockFunction, numberOfInputs, generations)
         else:
             print("invalid function choice")
         # perform evolution until termination
