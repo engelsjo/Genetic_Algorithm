@@ -104,11 +104,6 @@ class GeneticAlgorithm(object):
             breeders = self.populationSelection(chromosomesWithEvals)
             children = self.populationVariation(breeders)
             self.populationUpdate(breeders, children)
-            for entry in self.currentPopulation:
-                chromosome = entry
-                functionInputs = self.getInputsFromBitStr(entry)
-                evaluation = self.evalFunction(functionInputs)
-                print("{} : {}".format(functionInputs, evaluation))
         self.printPopulationInputs(self.currentPopulation)
         self.printPopulationInputAverages()
 
@@ -140,10 +135,8 @@ class GeneticAlgorithm(object):
                 minimum = chromosomeEval
                 minInputs = functionInputs
 
-        print("Min: X: {} Y: {}".format(minInputs[0], minInputs[1]))
-        print("Average: X: {} Y: {}".format(float(xSum) / float(len(self.currentPopulation)), float(ySum) / float(len(self.currentPopulation))))
-        print("Min: {}".format(minimum))
-        print("Average: {}".format(float(evalSum) / float(len(self.currentPopulation))))
+        print("Average inputs: X: {} Y: {}".format(float(xSum) / float(len(self.currentPopulation)), float(ySum) / float(len(self.currentPopulation))))
+        print("Average outputs: {}".format(float(evalSum) / float(len(self.currentPopulation))))
 
     def tourneySelect(self, chromosomesWithEvals):
         selectionIndices = []

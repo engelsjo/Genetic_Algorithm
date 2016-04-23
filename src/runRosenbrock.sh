@@ -1,1 +1,1 @@
-python genetic.py 10000 128 -10 10 2 rose
+python genetic.py 1000 32 -10 10 2 rose 50
