@@ -49,19 +49,19 @@ class GeneticAlgorithm(object):
     def populationSelection(self, chromosomesWithEvals):
         rouletteTable = self.buildRouletteWheel(chromosomesWithEvals)
         rouletteProbLine, scalingFactor = self.buildRouletteProbLineFromTable(rouletteTable)
-
         selectedParents = []
         while len(selectedParents) < len(self.currentPopulation):
             parentSelection = self.rouletteSelection(rouletteProbLine, scalingFactor)
-            selectedParents.append(parentSelection)
+            functionInputs = self.getInputsFromBitStr(parentSelection)
+            evalValue = self.evalFunction(functionInputs)
+            selectedParents.append((parentSelection, evalValue))
         return selectedParents
             
     def populationVariation(self, breeders):
-        numberOfVariations = len(breeders) / 2
         children = []
-        for i in range(numberOfVariations):
-            parent1 = breeders[i]
-            parent2 = breeders[i + 1]
+        for i in range(0, len(breeders), 2):
+            parent1 = breeders[i][0]
+            parent2 = breeders[i + 1][0]
             child1, child2 = self.crossover(parent1, parent2)
             randomNumber = randint(1, 1000)
             if randomNumber == 1: # mutate only 1/1000
@@ -75,10 +75,10 @@ class GeneticAlgorithm(object):
         # I am taking the elitist approach by keep the top 10 percent of parents and replacing the rest of the
         # population with randomly selected children
         survivors = []
-        breeders = sorted(breeders, key=lambda x: x[1])
         numberOfParentSurvivors = int(.1 * len(self.currentPopulation))
+        breeders = sorted(breeders, key=lambda x: x[1])
         for i in range(numberOfParentSurvivors):
-            survivors.append(breeders[i])
+            survivors.append(breeders[i][0])
         numberOfChildrenSurvivors = len(self.currentPopulation) - numberOfParentSurvivors
         for j in range(numberOfChildrenSurvivors):
             survivors.append(children[j])
@@ -88,7 +88,7 @@ class GeneticAlgorithm(object):
         if self.numberOfGenerations == self.totalGens:
             return True
         self.numberOfGenerations += 1
-        #print(self.numberOfGenerations)
+        print(self.numberOfGenerations)
         return False
 
     def evolveUntilTermination(self):
@@ -98,9 +98,8 @@ class GeneticAlgorithm(object):
             breeders = self.populationSelection(chromosomesWithEvals)
             parents, children = self.populationVariation(breeders)
             self.populationUpdate(parents, children)
-            self.printPopulationInputAverages()
-        #self.printPopulationInputs()
-        #self.printPopulationInputAverages()
+        self.printPopulationInputs(self.currentPopulation)    
+        self.printPopulationInputAverages()
 
     ############# Helper methods ##################
 
@@ -145,11 +144,10 @@ class GeneticAlgorithm(object):
         return tourneyWinner 
 
     def buildRouletteWheel(self, chromosomesWithEvals):
-        minValue = chromosomesWithEvals[-1][1] + .1
         sumOfAllFitnessVals = 0
         # first we invert each fitness value by multiplying by negative 1 - since we want small to count more
         for i, chromosomeWithEval in enumerate(chromosomesWithEvals):
-            chromosomesWithEvals[i] = (chromosomeWithEval[0], chromosomeWithEval[1] * -1 + minValue)
+            chromosomesWithEvals[i] = (chromosomeWithEval[0], 1.0 / float(chromosomeWithEval[1]))
             sumOfAllFitnessVals += chromosomesWithEvals[i][1]
         table = [] # list of tuples with 0th index the bits, and the 1st index the survival percent
         for chromosomeWithEval in chromosomesWithEvals:
@@ -173,21 +171,33 @@ class GeneticAlgorithm(object):
             currentTally += chromosomeWithSurvival[1]
         # make sure last value is the max timeline value (rounding may have thrown this off)
         table[-1] = (table[-1][0], 10**factorsOfTen)
+
         return table, factorsOfTen  
 
     def rouletteSelection(self, rouletteLine, factorsOfTen):
         randomNumber = randint(1, 10**factorsOfTen)
         for chromosome in rouletteLine:
-            if randomNumber > chromosome[1]: continue
-            else: return chromosome[0]  
+            if randomNumber > chromosome[1]: 
+                continue
+            else:
+                return chromosome[0]  
 
     def crossover(self, parent1, parent2):
-        randomPoint = randint(0, len(parent1)-1)
+        randomPoints = []
+        bitsPerValue = len(self.currentPopulation[0]) / self.evalNumberOfInputs
+        for a in range(self.evalNumberOfInputs):
+            randomPoint = randint(0, bitsPerValue-1)
+            #randomPoint = 11
+            randomPoints.append(randomPoint)
         # from random point to end of string perform the single point cross over
-        for i in range(randomPoint, len(parent1)):
-            tempVal = parent1[i]
-            parent1[i] = parent2[i]
-            parent2[i] = tempVal
+        for i, randomPoint in enumerate(randomPoints):
+            start = randomPoint + (i*bitsPerValue)
+            end = (i+1)*bitsPerValue
+            for j in range(start, end):
+                #print("flipping bits")
+                tempVal = parent1[j]
+                parent1[j] = parent2[j]
+                parent2[j] = tempVal
         return parent1, parent2 # these are the children now
 
     def mutate(self, child):
@@ -232,6 +242,8 @@ class GeneticAlgorithm(object):
     def getShiftValue(self):
         if self.minRange < 0:
             shiftVal = abs(self.minRange)
+        else:
+            shiftVal = 0
         return shiftVal
 
     def getScalar(self):
@@ -260,6 +272,10 @@ def rosenbrockFunction(inputValues):
     y = inputValues[1]
     return (1-x)**2 + 100*(y-x**2)**2
 
+def inClassExampleFunc(inputValues):
+    x = inputValues[0]
+    return 1.0 / (x**2 -x +1)
+
 def main(argv):
     if len(argv) == 8:
         initPopulationSize = int(argv[1])
@@ -278,6 +294,8 @@ def main(argv):
             ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, goldSteinPriceFunction, numberOfInputs, generations)
         elif functionOfChoice == "rose":
             ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, rosenbrockFunction, numberOfInputs, generations)
+        elif functionOfChoice == "classeg":
+            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, inClassExampleFunc, numberOfInputs, generations)
         else:
             print("invalid function choice")
         # perform evolution until termination
