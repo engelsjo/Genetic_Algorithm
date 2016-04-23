@@ -59,16 +59,21 @@ class GeneticAlgorithm(object):
             
     def populationVariation(self, breeders):
         children = []
-        for i in range(0, len(breeders), 2):
-            parent1 = breeders[i][0]
-            parent2 = breeders[i + 1][0]
+        breedersCopy = list(breeders) # grab a copy of this so we dont actually modify the parents during crossover
+        for i in range(0, len(breedersCopy), 2):
+            parent1 = list(breedersCopy[i][0]) # make copies to avoid parent modification
+            parent2 = list(breedersCopy[i + 1][0]) # make copies to avoid parent modification
             child1, child2 = self.crossover(parent1, parent2)
             randomNumber = randint(1, 1000)
             if randomNumber == 1: # mutate only 1/1000
                 child1 = self.mutate(child1)
-            children.append(child1)
-            children.append(child2)  
-        return breeders, children  
+            child1Inputs = self.getInputsFromBitStr(child1)
+            child2Inputs = self.getInputsFromBitStr(child2)
+            child1Eval = self.evalFunction(child1Inputs)
+            child2Eval = self.evalFunction(child2Inputs)
+            children.append((child1, child1Eval))
+            children.append((child2, child2Eval))
+        return children # breeders should not get modified now
         
     def populationUpdate(self, breeders, children):
         # now choose some portion of parents and some portion of crossover / mutated children
@@ -80,8 +85,9 @@ class GeneticAlgorithm(object):
         for i in range(numberOfParentSurvivors):
             survivors.append(breeders[i][0])
         numberOfChildrenSurvivors = len(self.currentPopulation) - numberOfParentSurvivors
+        children = sorted(children, key=lambda x : x[1])
         for j in range(numberOfChildrenSurvivors):
-            survivors.append(children[j])
+            survivors.append(children[j][0])
         self.currentPopulation = survivors
 
     def termination(self):
@@ -96,9 +102,14 @@ class GeneticAlgorithm(object):
         while not self.termination():
             chromosomesWithEvals = self.populationEvaluation()
             breeders = self.populationSelection(chromosomesWithEvals)
-            parents, children = self.populationVariation(breeders)
-            self.populationUpdate(parents, children)
-        self.printPopulationInputs(self.currentPopulation)    
+            children = self.populationVariation(breeders)
+            self.populationUpdate(breeders, children)
+            for entry in self.currentPopulation:
+                chromosome = entry
+                functionInputs = self.getInputsFromBitStr(entry)
+                evaluation = self.evalFunction(functionInputs)
+                print("{} : {}".format(functionInputs, evaluation))
+        self.printPopulationInputs(self.currentPopulation)
         self.printPopulationInputAverages()
 
     ############# Helper methods ##################
@@ -114,10 +125,14 @@ class GeneticAlgorithm(object):
         minimum = None
         minInputs = None
         evalSum = 0
+        xSum = 0
+        ySum = 0
         for chromosome in self.currentPopulation:
             functionInputs = self.getInputsFromBitStr(chromosome)
             chromosomeEval = self.evalFunction(functionInputs)
             evalSum += chromosomeEval
+            xSum += functionInputs[0]
+            ySum += functionInputs[1]
             if minimum == None: 
                 minimum = chromosomeEval
                 minInputs = functionInputs
@@ -125,7 +140,8 @@ class GeneticAlgorithm(object):
                 minimum = chromosomeEval
                 minInputs = functionInputs
 
-        print("X: {} Y: {}".format(minInputs[0], minInputs[1]))
+        print("Min: X: {} Y: {}".format(minInputs[0], minInputs[1]))
+        print("Average: X: {} Y: {}".format(float(xSum) / float(len(self.currentPopulation)), float(ySum) / float(len(self.currentPopulation))))
         print("Min: {}".format(minimum))
         print("Average: {}".format(float(evalSum) / float(len(self.currentPopulation))))
 
