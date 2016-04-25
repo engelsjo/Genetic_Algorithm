@@ -3,7 +3,7 @@ import sys
 from random import randint
 
 class GeneticAlgorithm(object):
-    def __init__(self, initialPopulationSize=100, numChromosomeBits=16, minRange=-100, maxRange=100, evalFunction=None, evalInputs=0, generations=1):
+    def __init__(self, initialPopulationSize=100, numChromosomeBits=16, minRange=-100, maxRange=100, evalFunction=None, evalInputs=0, generations=1, parentPercentage=.1):
         self.initPopulationSize = initialPopulationSize
         self.nbrOfChromosomeBits = numChromosomeBits
         self.minRange = minRange
@@ -17,6 +17,7 @@ class GeneticAlgorithm(object):
         self.numberOfGenerations = 0
         self.totalGens = generations
         self.tourneyKval = 2 # using binary tourney selection for now - we can play with this knob later
+        self.parentsToKeep = parentPercentage
 
     ############# Evolutionary Process Methods #############
 
@@ -80,7 +81,7 @@ class GeneticAlgorithm(object):
         # I am taking the elitist approach by keep the top 10 percent of parents and replacing the rest of the
         # population with randomly selected children
         survivors = []
-        numberOfParentSurvivors = int(.1 * len(self.currentPopulation))
+        numberOfParentSurvivors = int(self.parentsToKeep * len(self.currentPopulation))
         breeders = sorted(breeders, key=lambda x: x[1])
         for i in range(numberOfParentSurvivors):
             survivors.append(breeders[i][0])
@@ -104,7 +105,6 @@ class GeneticAlgorithm(object):
             breeders = self.populationSelection(chromosomesWithEvals)
             children = self.populationVariation(breeders)
             self.populationUpdate(breeders, children)
-        self.printPopulationInputs(self.currentPopulation)
         self.printPopulationInputAverages()
 
     ############# Helper methods ##################
@@ -286,7 +286,7 @@ def inClassExampleFunc(inputValues):
     return 1.0 / (x**2 -x +1)
 
 def main(argv):
-    if len(argv) == 8:
+    if len(argv) == 9:
         initPopulationSize = int(argv[1])
         numberOfChromosomeBits = int(argv[2])
         rangeMin = int(argv[3])
@@ -294,17 +294,18 @@ def main(argv):
         numberOfInputs = int(argv[5])
         functionOfChoice = argv[6]
         generations = int(argv[7])
+        parentsToKeep = float(argv[8])
         if numberOfChromosomeBits % numberOfInputs != 0:
             print("You need to be able to evenly divide the number of chromosome bits, and the number of evaluation function inputs values")
             sys.exit(-1)
 
         # set up our genetic algorithm with the function we wish.
         if functionOfChoice == "gold":
-            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, goldSteinPriceFunction, numberOfInputs, generations)
+            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, goldSteinPriceFunction, numberOfInputs, generations, parentsToKeep)
         elif functionOfChoice == "rose":
-            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, rosenbrockFunction, numberOfInputs, generations)
+            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, rosenbrockFunction, numberOfInputs, generations, parentsToKeep)
         elif functionOfChoice == "classeg":
-            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, inClassExampleFunc, numberOfInputs, generations)
+            ga = GeneticAlgorithm(initPopulationSize, numberOfChromosomeBits, rangeMin, rangeMax, inClassExampleFunc, numberOfInputs, generations, parentsToKeep)
         else:
             print("invalid function choice")
         # perform evolution until termination
