@@ -95,7 +95,7 @@ class GeneticAlgorithm(object):
         if self.numberOfGenerations == self.totalGens:
             return True
         self.numberOfGenerations += 1
-        print(self.numberOfGenerations)
+        #print(self.numberOfGenerations)
         return False
 
     def evolveUntilTermination(self):
@@ -105,7 +105,7 @@ class GeneticAlgorithm(object):
             breeders = self.populationSelection(chromosomesWithEvals)
             children = self.populationVariation(breeders)
             self.populationUpdate(breeders, children)
-        self.printPopulationInputAverages()
+            self.printPopulationInputAverages()
 
     ############# Helper methods ##################
 
