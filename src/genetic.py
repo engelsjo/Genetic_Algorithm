@@ -116,7 +116,7 @@ class GeneticAlgorithm(object):
             print(functionInputs)
 
     def printPopulationInputAverages(self):
-        print("\n\nInput Min/Averages: \n")
+        #print("\n\nInput Min/Averages: \n")
         minimum = None
         minInputs = None
         evalSum = 0
@@ -135,8 +135,15 @@ class GeneticAlgorithm(object):
                 minimum = chromosomeEval
                 minInputs = functionInputs
 
-        print("Average inputs: X: {} Y: {}".format(float(xSum) / float(len(self.currentPopulation)), float(ySum) / float(len(self.currentPopulation))))
-        print("Average outputs: {}".format(float(evalSum) / float(len(self.currentPopulation))))
+
+        currentX = float(xSum) / float(len(self.currentPopulation))
+        currentY = float(ySum) / float(len(self.currentPopulation))
+        averageOutput = float(evalSum) / float(len(self.currentPopulation))
+
+
+        print self.initPopulationSize, self.nbrOfChromosomeBits, self.numberOfGenerations, self.parentsToKeep, currentX, currentY, averageOutput
+        #print("Average inputs: X: {} Y: {}".format(float(xSum) / float(len(self.currentPopulation)), float(ySum) / float(len(self.currentPopulation))))
+        #print("Average outputs: {}".format(float(evalSum) / float(len(self.currentPopulation))))
 
     def tourneySelect(self, chromosomesWithEvals):
         selectionIndices = []
